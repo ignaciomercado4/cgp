@@ -1,3 +1,6 @@
 .vscode
 gcp
 Makefile
+*.o
+ao
+/vendor
