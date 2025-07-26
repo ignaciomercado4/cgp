@@ -1,15 +1,12 @@
-#ifndef TEXTURE_H
-#define TEXTURE_H
+#include "Texture.h"
 
-#include <iostream>
 #include <GL/glew.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-namespace Texture
+
+unsigned int Texture::loadTexture(std::string path)
 {
-    unsigned int loadTexture(std::string path)
-    {
         unsigned int textureID;
         glGenTextures(1, &textureID);
 
@@ -44,8 +41,3 @@ namespace Texture
 
         return textureID;
     }
-}
-
-
-
-#endif
