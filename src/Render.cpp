@@ -1,12 +1,16 @@
 #include <GL/glew.h>
-#include <Render.h>
+#include "Render.h"
+#include "Shader.h"
 #include <vector>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 GLuint Render::_quadVAO = 0;
+extern GLuint renderingProgram;
 int Render::_tilemap[10][10] = {0};
+float Render::TILE_SIZE = 64.0f;
 
-void Render::drawTile()
+void Render::drawTile(float x, float y, float type)
 {
     if (Render::_quadVAO == 0)
     {
@@ -32,13 +36,77 @@ void Render::drawTile()
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, uv));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, uv));
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
+
+    glm::mat4 modelMat4(1.0f);
+    modelMat4 = glm::translate(modelMat4, glm::vec3(x, y, 0.0f));
+    modelMat4 = glm::scale(modelMat4, glm::vec3(TILE_SIZE, TILE_SIZE, 1.0f));
+
+    Shader::setMat4(renderingProgram, "u_Model", modelMat4);
+
     glBindVertexArray(Render::_quadVAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void Render::drawTilemap()
+{
+    for (int row = 0; row < 10; row++)
+    {
+        for (int col = 0; col < 10; col++)
+        {
+            int tileType = _tilemap[row][col];
+            if (tileType != 0)
+            {
+                float x = col * TILE_SIZE;
+                float y = row * TILE_SIZE;
+                
+                drawTile(x, y, tileType);
+            }
+        }
+    }
+}
+
+void Render::initTilemap()
+{
+    // testing tilemap
+    // 0 = empty, 1 = solid
+    
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+            _tilemap[i][j] = 0;
+        }
+    }
+    
+    // upper and lower edges
+    for (int col = 0; col < 10; col++) {
+        _tilemap[0][col] = 1;  
+        _tilemap[9][col] = 1;  
+    }
+    
+    // left and right edges
+    for (int row = 0; row < 10; row++) {
+        _tilemap[row][0] = 1;
+        _tilemap[row][9] = 1;
+    }
+    
+    // some in the middle
+    _tilemap[3][3] = 1;
+    _tilemap[3][4] = 1;
+    _tilemap[4][3] = 1;
+    _tilemap[4][4] = 1;
+    
+    _tilemap[6][6] = 1;
+    _tilemap[6][7] = 1;
+    _tilemap[7][6] = 1;
+    _tilemap[7][7] = 1;
+    
+    std::cout << "Tilemap init succesfully" << std::endl;
 }

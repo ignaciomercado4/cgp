@@ -56,3 +56,9 @@ GLuint Shader::createShaderProgram(std::string vertexShaderPath, std::string fra
 
     return vfShader;
 }
+
+
+void Shader::setMat4(GLuint program, const std::string name, glm::mat4 value)
+{
+    glUniformMatrix4fv(glGetUniformLocation(program, name.c_str()), 1, GL_FALSE, &value[0][0]);
+}

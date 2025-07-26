@@ -6,16 +6,19 @@
 
 struct Vertex
 {
-    glm::vec2 position;
+    glm::vec3 position;
     glm::vec2 uv;
 };
 
 namespace Render
 {
-    extern GLuint _quadVAO;          
-    extern int _tilemap[10][10];     
+    extern GLuint _quadVAO;
+    extern int _tilemap[10][10];
+    extern float TILE_SIZE;
 
-    void drawTile();                  
+    void drawTile(float x, float y, float type);
+    void drawTilemap();
+    void initTilemap();
 }
 
 #endif

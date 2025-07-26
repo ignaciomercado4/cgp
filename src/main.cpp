@@ -7,90 +7,67 @@
 #include "Utils.h"
 #include "Render.h"
 #include "Shader.h"
+#include "Player.h"
+#include "Texture.h"
+#include "Input.h"
 #include <glm/glm.hpp>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define WINDOW_WIDTH 600
 #define WINDOW_HEIGHT 600
-#define numVAOs 1
 
-GLuint vao[numVAOs];
 GLuint renderingProgram;
 unsigned int cobblestoneTextID;
-
-struct Transform
-{
-    glm::vec3 position;
-};
-
-namespace Game
-{
-    Transform _camera;
-    float _cameraSpeed = 0.5f;
-
-    // ADD KEY CALLBACKS
-};
-
-namespace Texture
-{
-    unsigned int loadTexture(std::string path)
-    {
-        unsigned int textureID;
-        glGenTextures(1, &textureID);
-
-        int nrChannels, width, height;
-        unsigned char *data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
-        if (data)
-        {
-            GLenum format;
-            if (nrChannels == 1)
-                format = GL_RED;
-            else if (nrChannels == 3)
-                format = GL_RGB;
-            else if (nrChannels == 4)
-                format = GL_RGBA;
-
-            glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-            glGenerateMipmap(GL_TEXTURE_2D);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-            stbi_image_free(data);
-        }
-        else
-        {
-            std::cout << "Texture failed to load at path: " << path << std::endl;
-            stbi_image_free(data);
-        }
-
-        return textureID;
-    }
-}
-
-
+glm::mat4 currentView;
+glm::mat4 currentProjection;
+Player::Player player = {glm::vec2(0.0f, 0.0f)};
 
 void init(GLFWwindow *window)
 {
+    std::cout << "||| init |||" << std::endl;
+
     renderingProgram = Shader::createShaderProgram("shaders/vertShader.glsl", "shaders/fragShader.glsl");
+    std::cout << "Shader program created: " << renderingProgram << std::endl;
+    
     cobblestoneTextID = Texture::loadTexture("textures/cobblestone.png");
-    glGenVertexArrays(numVAOs, vao);
-    glBindVertexArray(vao[0]);
+    std::cout << "Texture loaded: " << cobblestoneTextID << std::endl;
+
+    Render::initTilemap();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    std::cout << "||| finished init |||" << std::endl;
 }
 
 void display(GLFWwindow *window, float currentTime)
 {
-    glUseProgram(renderingProgram);
+    glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);        
+    
+    glUseProgram(renderingProgram);      
+    
+    glm::vec2 camPos = player.position;
+    currentView = glm::translate(glm::mat4(1.0f), glm::vec3(-camPos.x, -camPos.y, 0.0f));
+
+    currentProjection = glm::ortho(
+        0.0f, static_cast<float>(WINDOW_WIDTH),
+        0.0f, static_cast<float>(WINDOW_HEIGHT),
+        -1.0f, 1.0f);
+
+    Shader::setMat4(renderingProgram, "u_View", currentView);
+    Shader::setMat4(renderingProgram, "u_Projection", currentProjection);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, cobblestoneTextID);
-
     glUniform1i(glGetUniformLocation(renderingProgram, "uTexture"), 0);
-    Render::drawTile();
+
+    Render::drawTilemap();
+    
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cout << "OpenGL Error: " << error << std::endl;
+    }
 }
 
 int main()
@@ -98,16 +75,26 @@ int main()
     if (!glfwInit())
     {
         std::cerr << "Error in GLFW init" << std::endl;
+        return -1;
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
+    
     GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Window :D", NULL, NULL);
+    if (!window) {
+        std::cerr << "Failed to create window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+    
     glfwMakeContextCurrent(window);
 
     if (glewInit() != GLEW_OK)
     {
-        std::cerr << EXIT_FAILURE << std::endl;
+        std::cerr << "Failed to initialize GLEW" << std::endl;
+        return -1;
     }
 
     glfwSwapInterval(1);
@@ -115,6 +102,8 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        Input::update(window);
+        Player::keyboardUpdate(player);
         display(window, glfwGetTime());
         glfwSwapBuffers(window);
         glfwPollEvents();
